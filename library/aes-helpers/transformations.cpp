@@ -143,6 +143,7 @@ void ShiftRow(uint8_t **state, size_t i, size_t n, size_t words_in_block) {
     tmp[j] = state[i][(j + n) % words_in_block];
   }
   memcpy(state[i], tmp, words_in_block * sizeof(uint8_t));
+  delete[] tmp;
 }
 
 void ShiftRows(uint8_t **state, size_t words_in_block) {

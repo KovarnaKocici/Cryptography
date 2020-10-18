@@ -14,6 +14,10 @@ add_library(kalyna
         include/kalyna.h
         src/kalyna.cpp)
 
+add_library(rc4
+        include/rc4.h
+        src/rc4.cpp)
+
 target_include_directories(aes PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
@@ -24,7 +28,12 @@ target_include_directories(kalyna PUBLIC
         $<INSTALL_INTERFACE:include>
         PRIVATE src kalyna-helpers)
 
-set_target_properties(aes kalyna PROPERTIES
+target_include_directories(rc4 PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+        PRIVATE src)
+
+set_target_properties(aes kalyna rc4 PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED YES
         CXX_EXTENSIONS OFF)

@@ -138,6 +138,47 @@ uint8_t *AES::DecryptCFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *i
   return out;
 }
 
+
+uint8_t* AES::EncryptXTS(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv, uint32_t& outLen)
+{
+    auto* out = new uint8_t[outLen];
+    return out;
+}
+
+
+uint8_t* AES::DecryptXTS(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv)
+{
+    auto* out = new uint8_t[inLen];
+    return out;
+}
+
+uint8_t* AES::EncryptCTR(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv, uint32_t& outLen)
+{
+    auto* out = new uint8_t[outLen];
+    return out;
+}
+
+
+uint8_t* AES::DecryptCTR(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv)
+{
+    auto* out = new uint8_t[inLen];
+    return out;
+}
+
+
+uint8_t* AES::EncryptOFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv, uint32_t& outLen)
+{
+    auto* out = new uint8_t[outLen];
+    return out;
+}
+
+
+uint8_t* AES::DecryptOFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv)
+{
+    auto* out = new uint8_t[inLen];
+    return out;
+}
+
 void AES::EncryptBlock(const uint8_t in[], uint8_t out[], const uint8_t *roundKeys) const {
   auto **state = new uint8_t *[4];
   state[0] = new uint8_t[4 * Nb];

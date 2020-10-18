@@ -1,3 +1,3 @@
 add_executable(example main.cpp)
 
-target_link_libraries(example aes kalyna rc4)
+target_link_libraries(example aes kalyna rc4 salsa20)

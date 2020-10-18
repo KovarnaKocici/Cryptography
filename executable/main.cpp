@@ -1,4 +1,5 @@
 #include <iostream>
+#include <sstream>
 #include <numeric>
 #include <random>
 #include <fstream>
@@ -8,9 +9,7 @@
 #include "aes.h"
 #include "kalyna.h"
 #include "rc4.h"
-
-#include <string>
-#include <iostream>
+#include "salsa20.h"
 
 using namespace std;
 
@@ -21,7 +20,7 @@ using namespace std;
 
 const int kBytesInGigabyte = 1'000'000'000;
 const int kBytesInMb = 1'000;
-const std::string kTestFileName = "test.bin";
+const std::string kTestFileName = "test";
 const unsigned int BLOCK_BYTES_LENGTH = 16 * sizeof(uint8_t);
 
 inline bool FileExists(const std::string &name) {
@@ -29,19 +28,23 @@ inline bool FileExists(const std::string &name) {
   return f.good();
 }
 
-void GenerateData() {
+void GenerateData(const int& kDataSize, std::string& fileName) {
   std::random_device rd;
   std::mt19937 gen(rd());
   std::uniform_int_distribution<> distrib(std::numeric_limits<uint8_t>::min(), std::numeric_limits<uint8_t>::max());
-
+  
+  std::ostringstream os;
+  os << kDataSize;
+  fileName = kTestFileName + os.str() +".bin";
+  
   std::cout << "Starting data generation" << std::endl;
 
-  if (!FileExists(kTestFileName)) {
+  if (!FileExists(fileName)) {
     std::ofstream test_file;
-    test_file.open(kTestFileName, std::ios::out | std::ios::binary);
+    test_file.open(fileName, std::ios::out | std::ios::binary);
 
     if (test_file.is_open()) {
-      for (int i = 0; i < kBytesInMb; i++) {
+      for (int i = 0; i < kDataSize; i++) {
         test_file << (unsigned char) distrib(gen);
       }
       test_file.close();
@@ -51,12 +54,12 @@ void GenerateData() {
   std::cout << "Data generation finished" << std::endl;
 }
 
-void Measurement(const int& kDataSize) {
+void Measurement(const int& kDataSize, const std::string& fileName) {
   size_t constexpr test_runs = 1u << 3u;
 
   auto *input_data = new uint8_t[kDataSize];
-  if (FileExists(kTestFileName)) {
-    std::ifstream input(kTestFileName.c_str(), std::ios::in | std::ios::binary);
+  if (FileExists(fileName)) {
+    std::ifstream input(fileName.c_str(), std::ios::in | std::ios::binary);
     if (input.is_open()) {
       for (int i = 0; i < kDataSize; i++) {
         input >> input_data[i];
@@ -141,16 +144,20 @@ void Measurement(const int& kDataSize) {
   uint8_t* enc = new uint8_t[kDataSize];
   uint8_t* dec = new uint8_t[kDataSize];
 
-  //Encipher
-  rc4.SetKey(key_rc4, sizeof key_rc4);
-  rc4.Encrypt(input_data, enc, kDataSize);
+  for (size_t test = 0; test < test_runs; test++) {
+      //Encipher
+      rc4.SetKey(key_rc4, sizeof key_rc4);
+      rc4.Encrypt(input_data, enc, kDataSize);
 
-  //Decipher
-  rc4.SetKey(key_rc4, sizeof key_rc4);
-  rc4.Encrypt(enc, dec, kDataSize);
-
+      //Decipher
+      rc4.SetKey(key_rc4, sizeof key_rc4);
+      rc4.Encrypt(enc, dec, kDataSize);
+  }
 
   auto const& after_rc4 = std::chrono::high_resolution_clock::now();
+
+  delete[] enc;
+  delete[] dec;
 
   printf(
 	  "RC4(%u) on %u bytes took %.6lfs\n",
@@ -163,13 +170,28 @@ void Measurement(const int& kDataSize) {
 
 #if RUN_SALSA20
   printf("Start SALSA20\n");
+  auto const& before_salsa20 = std::chrono::high_resolution_clock::now();
+
+  //for (size_t test = 0; test < test_runs; test++) {
+  //}
+
+  auto const& after_salsa20 = std::chrono::high_resolution_clock::now();
+
+  printf(
+	  "RC4(%u) on %u bytes took %.6lfs\n",
+	  256,
+	  kDataSize,
+	  static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_salsa20 - before_salsa20).count())
+	  / static_cast<double>(test_runs * microseconds_in_a_second));
+
 #endif //SALSA20
 
   delete[] input_data;
 }
 
 int main() {
-  GenerateData();
-  Measurement(kBytesInMb);
+  std::string TestFile;
+  GenerateData(kBytesInMb, TestFile);
+  Measurement(kBytesInMb, TestFile);
   return 0;
 }

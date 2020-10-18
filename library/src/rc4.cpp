@@ -1,4 +1,3 @@
-#include <cstring>
 #include <stdexcept>
 
 #include "rc4.h"
@@ -6,7 +5,7 @@
 RC4::RC4() {
 }
 
-void RC4::SetKey(uint8_t k[], uint32_t keyLen) {
+void RC4::SetKey(uint8_t key[], uint32_t keyLen) {
 	if (1 <= keyLen && keyLen <= 256)
 	{
 		sizeKey = keyLen;
@@ -17,14 +16,14 @@ void RC4::SetKey(uint8_t k[], uint32_t keyLen) {
 			sbox[i] = i;
 		}
 
-		KSA(k);
+		KSA(key);
 	}
 	else
 		throw std::invalid_argument("Incorrect key length");
 }
 
-void RC4::Encrypt(uint8_t plaintext[], uint8_t ciphertext[], uint32_t Len) {
-	PRGA(plaintext, ciphertext, Len);
+void RC4::Encrypt(uint8_t plainText[], uint8_t cipherText[], uint32_t Len) {
+	PRGA(plainText, cipherText, Len);
 }
 
 void RC4::KSA(uint8_t* key)
@@ -43,12 +42,12 @@ void RC4::Swap(uint8_t data[], uint32_t i, uint32_t j)
 	data[j] = temp;
 }
 
-void RC4::PRGA(uint8_t plaintext[], uint8_t cipher[], uint32_t Len)
+void RC4::PRGA(uint8_t plainText[], uint8_t cipherText[], uint32_t Len)
 {
 	for (uint32_t k = 0; k < Len; k++) {
 		prgaIndexA = (prgaIndexA + 1) % 256;
 		prgaIndexB = (prgaIndexB + sbox[prgaIndexA]) % 256;
 		Swap(sbox, prgaIndexA, prgaIndexB);
-		cipher[k] = sbox[(sbox[prgaIndexA] + sbox[prgaIndexB]) % 256] ^ plaintext[k];
+		cipherText[k] = sbox[(sbox[prgaIndexA] + sbox[prgaIndexB]) % 256] ^ plainText[k];
 	}
 }

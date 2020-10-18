@@ -18,6 +18,10 @@ add_library(rc4
         include/rc4.h
         src/rc4.cpp)
 
+add_library(salsa20
+        include/salsa20.h
+        src/salsa20.cpp)
+
 target_include_directories(aes PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
@@ -33,7 +37,12 @@ target_include_directories(rc4 PUBLIC
         $<INSTALL_INTERFACE:include>
         PRIVATE src)
 
-set_target_properties(aes kalyna rc4 PROPERTIES
+target_include_directories(salsa20 PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+        PRIVATE src)
+
+set_target_properties(aes kalyna rc4 salsa20 PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED YES
         CXX_EXTENSIONS OFF)

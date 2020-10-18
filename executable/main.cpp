@@ -11,8 +11,6 @@
 #include "rc4.h"
 #include "salsa20.h"
 
-using namespace std;
-
 #define RUN_AES 1
 #define RUN_KALYNA 1
 #define RUN_RC4 1
@@ -88,7 +86,6 @@ void Measurement(const int& kDataSize, const std::string& fileName) {
     for (int i = 0; i < kDataSize; i += BLOCK_BYTES_LENGTH) {
       unsigned char *out = aes.EncryptCBC(input_data + i, BLOCK_BYTES_LENGTH, key_aes, iv, len);
       unsigned char *innew = aes.DecryptCBC(out, BLOCK_BYTES_LENGTH, key_aes, iv);
-      assert(sizeof(innew) == sizeof(out));
       delete[] out;
     }
   }
@@ -118,7 +115,6 @@ void Measurement(const int& kDataSize, const std::string& fileName) {
       memcpy(input, input_data, BLOCK_BYTES_LENGTH);
       kalyna.Encipher(input, ciphered_text);
       kalyna.Decipher(ciphered_text, output);
-      assert(sizeof(input) == sizeof(output));
     }
   }
 
@@ -151,7 +147,7 @@ void Measurement(const int& kDataSize, const std::string& fileName) {
 
       //Decipher
       rc4.SetKey(key_rc4, sizeof key_rc4);
-      rc4.Encrypt(enc, dec, kDataSize);
+      rc4.Decrypt(enc, dec, kDataSize);
   }
 
   auto const& after_rc4 = std::chrono::high_resolution_clock::now();
@@ -161,7 +157,7 @@ void Measurement(const int& kDataSize, const std::string& fileName) {
 
   printf(
 	  "RC4(%u) on %u bytes took %.6lfs\n",
-	  256,
+	  32,
 	  kDataSize,
 	  static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_rc4 - before_rc4).count())
 	  / static_cast<double>(test_runs * microseconds_in_a_second));
@@ -172,13 +168,19 @@ void Measurement(const int& kDataSize, const std::string& fileName) {
   printf("Start SALSA20\n");
   auto const& before_salsa20 = std::chrono::high_resolution_clock::now();
 
-  //for (size_t test = 0; test < test_runs; test++) {
-  //}
+  Salsa20 salsa20(256);
+  uint8_t expected[kDataSize] = { 0 };
+  uint8_t key_salsa[32] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+  uint8_t n[8] = { 101, 102, 103, 104, 105, 106, 107, 108 };
 
+  for (size_t test = 0; test < test_runs; test++) {
+	  salsa20.Encrypt(key_salsa, n, 0, input_data, 64);
+	  salsa20.Decrypt(key_salsa, n, 0, input_data, 64);
+  }
   auto const& after_salsa20 = std::chrono::high_resolution_clock::now();
 
   printf(
-	  "RC4(%u) on %u bytes took %.6lfs\n",
+	  "Salsa20(%u) on %u bytes took %.6lfs\n",
 	  256,
 	  kDataSize,
 	  static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_salsa20 - before_salsa20).count())

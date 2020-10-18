@@ -1,6 +1,7 @@
 #include <stdexcept>
 
 #include "rc4.h"
+#include <iostream>
 
 RC4::RC4() {
 }
@@ -12,6 +13,7 @@ void RC4::SetKey(uint8_t key[], uint32_t keyLen) {
 
 		prgaIndexA = 0;
 		prgaIndexB = 0;
+
 		for (int i = 0; i < 256; i++) {
 			sbox[i] = i;
 		}
@@ -24,6 +26,10 @@ void RC4::SetKey(uint8_t key[], uint32_t keyLen) {
 
 void RC4::Encrypt(uint8_t plainText[], uint8_t cipherText[], uint32_t Len) {
 	PRGA(plainText, cipherText, Len);
+}
+
+void RC4::Decrypt(uint8_t plainText[], uint8_t cipherText[], uint32_t Len) {
+	Encrypt(plainText, cipherText, Len);
 }
 
 void RC4::KSA(uint8_t* key)

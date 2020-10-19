@@ -8,28 +8,24 @@ class AES {
  public:
   explicit AES(int keyLen = 256);
 
-  uint8_t *EncryptECB(uint8_t in[], uint32_t inLen, uint8_t key[], uint32_t &outLen);
+  uint8_t* EncryptECB(uint8_t in[], uint32_t inLen, uint8_t key[], uint32_t &outLen);
 
-  uint8_t *DecryptECB(uint8_t in[], uint32_t inLen, uint8_t key[]);
+  uint8_t* DecryptECB(uint8_t in[], uint32_t inLen, uint8_t key[]);
 
-  uint8_t *EncryptCBC(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv, uint32_t &outLen);
+  uint8_t* EncryptCBC(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv, uint32_t &outLen);
 
-  uint8_t *DecryptCBC(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv);
+  uint8_t* DecryptCBC(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv);
 
-  uint8_t *EncryptCFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv, uint32_t &outLen);
+  uint8_t* EncryptCFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv, uint32_t &outLen);
 
-  uint8_t *DecryptCFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv);
+  uint8_t* DecryptCFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv);
 
-  uint8_t* EncryptXTS(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv, uint32_t& outLen);
+  uint8_t* EncryptCTR(uint8_t in[], uint32_t inLen, uint8_t key[], uint32_t& outLen);
 
-  uint8_t* DecryptXTS(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv);
-
-  uint8_t* EncryptCTR(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv, uint32_t& outLen);
-
-  uint8_t* DecryptCTR(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv);
-
+  uint8_t* DecryptCTR(uint8_t in[], uint32_t inLen, uint8_t key[]);
+  
   uint8_t* EncryptOFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv, uint32_t& outLen);
-
+  
   uint8_t* DecryptOFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv);
 
  private:

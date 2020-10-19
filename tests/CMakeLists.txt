@@ -8,4 +8,4 @@ add_executable(${BINARY} ${TEST_SOURCES})
 
 add_test(NAME ${BINARY} COMMAND ${BINARY})
 
-target_link_libraries(${BINARY} PUBLIC gtest aes kalyna rc4 salsa20)
+target_link_libraries(${BINARY} PUBLIC gtest aes kalyna rc4 salsa20 sha256 kupyna)

@@ -22,6 +22,14 @@ add_library(salsa20
         include/salsa20.h
         src/salsa20.cpp)
 
+add_library(sha256
+        include/sha256.h
+        src/sha256.cpp)
+
+add_library(kupyna
+        include/kupyna.h
+        src/kupyna.cpp)
+
 target_include_directories(aes PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
@@ -42,7 +50,17 @@ target_include_directories(salsa20 PUBLIC
         $<INSTALL_INTERFACE:include>
         PRIVATE src)
 
-set_target_properties(aes kalyna rc4 salsa20 PROPERTIES
+target_include_directories(sha256 PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+        PRIVATE src)
+
+target_include_directories(kupyna PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+        PRIVATE src)
+
+set_target_properties(aes kalyna rc4 salsa20 sha256 kupyna PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED YES
         CXX_EXTENSIONS OFF)

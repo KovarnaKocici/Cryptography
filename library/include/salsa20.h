@@ -5,10 +5,6 @@
 #include <cstdio>
 #include <stddef.h>
 
-/**
- * Return codes for s20_crypt
- */
-
 class Salsa20 {
 public:
 	explicit Salsa20(int keylen = 256);
@@ -36,5 +32,4 @@ private:
 	uint32_t buflen;
 
 };
-
-#endif //RC4_LIBRARY_INCLUDE_RC4_H_
+#endif //SALSA20_LIBRARY_INCLUDE_SALSA20_H_

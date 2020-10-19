@@ -21,7 +21,7 @@ Salsa20::Salsa20(int keyLen)
 
 bool Salsa20::Encrypt(uint8_t* key, uint8_t nonce[8], uint32_t si, uint8_t* buf, uint32_t buflen)
 {
-	uint8_t keystream[64];
+	uint8_t keystream[64] = { 0 };
 	uint8_t n[16] = { 0 };
 	uint32_t i;
 

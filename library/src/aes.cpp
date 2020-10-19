@@ -27,7 +27,7 @@ AES::AES(int keyLen) {
   }
 }
 
-uint8_t *AES::EncryptECB(uint8_t in[], uint32_t inLen, uint8_t key[], uint32_t &outLen) {
+uint8_t* AES::EncryptECB(uint8_t in[], uint32_t inLen, uint8_t key[], uint32_t &outLen) {
   outLen = GetPaddingLength(inLen, blockBytesLen);
   uint8_t *alignIn = PaddingNulls(in, inLen, outLen);
   auto *out = new uint8_t[outLen];
@@ -43,7 +43,7 @@ uint8_t *AES::EncryptECB(uint8_t in[], uint32_t inLen, uint8_t key[], uint32_t &
   return out;
 }
 
-uint8_t *AES::DecryptECB(uint8_t in[], uint32_t inLen, uint8_t key[]) {
+uint8_t* AES::DecryptECB(uint8_t in[], uint32_t inLen, uint8_t key[]) {
   auto *out = new uint8_t[inLen];
   auto *roundKeys = new uint8_t[4 * Nb * (Nr + 1)];
   KeyExpansion(key, roundKeys);
@@ -56,7 +56,7 @@ uint8_t *AES::DecryptECB(uint8_t in[], uint32_t inLen, uint8_t key[]) {
   return out;
 }
 
-uint8_t *AES::EncryptCBC(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv, uint32_t &outLen) {
+uint8_t* AES::EncryptCBC(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv, uint32_t &outLen) {
   outLen = GetPaddingLength(inLen, blockBytesLen);
   uint8_t *alignIn = PaddingNulls(in, inLen, outLen);
   auto *out = new uint8_t[outLen];
@@ -77,7 +77,7 @@ uint8_t *AES::EncryptCBC(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *i
   return out;
 }
 
-uint8_t *AES::DecryptCBC(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv) {
+uint8_t* AES::DecryptCBC(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv) {
   auto *out = new uint8_t[inLen];
   auto *block = new uint8_t[blockBytesLen];
   auto *roundKeys = new uint8_t[4 * Nb * (Nr + 1)];
@@ -95,7 +95,7 @@ uint8_t *AES::DecryptCBC(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *i
   return out;
 }
 
-uint8_t *AES::EncryptCFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv, uint32_t &outLen) {
+uint8_t* AES::EncryptCFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv, uint32_t &outLen) {
   outLen = GetPaddingLength(inLen, blockBytesLen);
   uint8_t *alignIn = PaddingNulls(in, inLen, outLen);
   auto *out = new uint8_t[outLen];
@@ -118,7 +118,7 @@ uint8_t *AES::EncryptCFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *i
   return out;
 }
 
-uint8_t *AES::DecryptCFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv) {
+uint8_t* AES::DecryptCFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *iv) {
   auto *out = new uint8_t[inLen];
   auto *block = new uint8_t[blockBytesLen];
   auto *encryptedBlock = new uint8_t[blockBytesLen];
@@ -138,45 +138,99 @@ uint8_t *AES::DecryptCFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t *i
   return out;
 }
 
+uint8_t* AES::EncryptCTR(uint8_t in[], uint32_t inLen, uint8_t key[], uint32_t& outLen) {
+	unsigned char nonce[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
+	unsigned char ctr[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+	unsigned char nc[sizeof(nonce) + sizeof(ctr)];
+	memcpy(nc, nonce, sizeof(nonce));
 
-uint8_t* AES::EncryptXTS(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv, uint32_t& outLen)
-{
-    auto* out = new uint8_t[outLen];
-    return out;
+	outLen = GetPaddingLength(inLen, blockBytesLen);
+	uint8_t* alignIn = PaddingNulls(in, inLen, outLen);
+	auto* out = new uint8_t[outLen];
+	auto* encryptedBlock = new uint8_t[blockBytesLen];
+	auto* roundKeys = new uint8_t[4 * Nb * (Nr + 1)];
+	KeyExpansion(key, roundKeys);
+
+	for (uint32_t i = 0; i < outLen; i += blockBytesLen) {
+		memcpy(nc + sizeof(nonce), ctr, sizeof(ctr));
+		EncryptBlock(nc, encryptedBlock, roundKeys);
+		XorBlocks(alignIn + i, encryptedBlock, out + i, blockBytesLen);
+		memcpy(ctr, IncrementCtr(ctr, sizeof(ctr)), sizeof(ctr));
+	}
+
+	delete[] encryptedBlock;
+	delete[] alignIn;
+	delete[] roundKeys;
+
+	return out;
 }
 
 
-uint8_t* AES::DecryptXTS(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv)
-{
-    auto* out = new uint8_t[inLen];
-    return out;
-}
+uint8_t* AES::DecryptCTR(uint8_t in[], uint32_t inLen, uint8_t key[]) {
+	unsigned char nonce[] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
+	unsigned char ctr[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+	unsigned char nc[sizeof(nonce) + sizeof(ctr)];
+	memcpy(nc, nonce, sizeof(nonce));
+	auto* out = new uint8_t[inLen];
+	auto* encryptedBlock = new uint8_t[blockBytesLen];
+	auto* roundKeys = new uint8_t[4 * Nb * (Nr + 1)];
+	KeyExpansion(key, roundKeys);
+	for (uint32_t i = 0; i < inLen; i += blockBytesLen) {
+		memcpy(nc + sizeof(nonce), ctr, sizeof(ctr));
+		EncryptBlock(nc, encryptedBlock, roundKeys);
+		XorBlocks(in + i, encryptedBlock, out + i, blockBytesLen);
+		memcpy(ctr, IncrementCtr(ctr, sizeof(ctr)), sizeof(ctr));
+	}
 
-uint8_t* AES::EncryptCTR(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv, uint32_t& outLen)
-{
-    auto* out = new uint8_t[outLen];
-    return out;
-}
+	delete[] encryptedBlock;
+	delete[] roundKeys;
 
-
-uint8_t* AES::DecryptCTR(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv)
-{
-    auto* out = new uint8_t[inLen];
-    return out;
-}
-
-
-uint8_t* AES::EncryptOFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv, uint32_t& outLen)
-{
-    auto* out = new uint8_t[outLen];
-    return out;
+	return out;
 }
 
 
-uint8_t* AES::DecryptOFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv)
-{
-    auto* out = new uint8_t[inLen];
-    return out;
+uint8_t* AES::EncryptOFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv, uint32_t& outLen) {
+	outLen = GetPaddingLength(inLen, blockBytesLen);
+	uint8_t* alignIn = PaddingNulls(in, inLen, outLen);
+	auto* out = new uint8_t[outLen];
+	auto* block = new uint8_t[blockBytesLen];
+	auto* encryptedBlock = new uint8_t[blockBytesLen];
+	auto* roundKeys = new uint8_t[4 * Nb * (Nr + 1)];
+	KeyExpansion(key, roundKeys);
+	memcpy(block, iv, blockBytesLen);
+	for (uint32_t i = 0; i < outLen; i += blockBytesLen) {
+		EncryptBlock(block, encryptedBlock, roundKeys);
+		memcpy(block, encryptedBlock, blockBytesLen);
+		XorBlocks(alignIn + i, encryptedBlock, out + i, blockBytesLen);
+	}
+
+	delete[] block;
+	delete[] encryptedBlock;
+	delete[] alignIn;
+	delete[] roundKeys;
+
+	return out;
+}
+
+
+uint8_t* AES::DecryptOFB(uint8_t in[], uint32_t inLen, uint8_t key[], uint8_t* iv) {
+	auto* out = new uint8_t[inLen];
+	auto* block = new uint8_t[blockBytesLen];
+	auto* encryptedBlock = new uint8_t[blockBytesLen];
+	auto* roundKeys = new uint8_t[4 * Nb * (Nr + 1)];
+	KeyExpansion(key, roundKeys);
+	memcpy(block, iv, blockBytesLen);
+	for (uint32_t i = 0; i < inLen; i += blockBytesLen) {
+		EncryptBlock(block, encryptedBlock, roundKeys);
+		memcpy(block, encryptedBlock, blockBytesLen);
+		XorBlocks(in + i, encryptedBlock, out + i, blockBytesLen);
+	}
+
+	delete[] block;
+	delete[] encryptedBlock;
+	delete[] roundKeys;
+
+	return out;
 }
 
 void AES::EncryptBlock(const uint8_t in[], uint8_t out[], const uint8_t *roundKeys) const {

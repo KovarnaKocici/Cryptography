@@ -1,5 +1,5 @@
-#ifndef AES_KALYNA_LIBRARY_AES_HELPERS_TRANSFORMATIONS_H_
-#define AES_KALYNA_LIBRARY_AES_HELPERS_TRANSFORMATIONS_H_
+#ifndef IS_LIBRARY_AES_HELPERS_TRANSFORMATIONS_H_
+#define IS_LIBRARY_AES_HELPERS_TRANSFORMATIONS_H_
 
 #include <cstdint>
 #include <cstdio>
@@ -44,4 +44,4 @@ void InvMixColumns(uint8_t **state, size_t words_in_block);
 
 void InvShiftRows(uint8_t **state, size_t words_in_block);
 
-#endif //AES_KALYNA_LIBRARY_AES_HELPERS_TRANSFORMATIONS_H_
+#endif //IS_LIBRARY_AES_HELPERS_TRANSFORMATIONS_H_

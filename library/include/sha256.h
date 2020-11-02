@@ -15,6 +15,7 @@ public:
 
 	static const uint32_t DIGEST_SIZE = (256 / 8);
 	std::string Hash(std::string in);
+	std::string Hash(uint8_t* in, uint32_t inLen);
 
 private:
 	const static uint32_t sha256_k[];

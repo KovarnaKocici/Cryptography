@@ -158,11 +158,16 @@ void SHA256::Final(uint8_t* digest)
 
 std::string SHA256::Hash(std::string in)
 {
-	uint8_t* digest = new uint8_t [SHA256::DIGEST_SIZE];
+	return Hash((unsigned char*)in.c_str(), (uint32_t)in.length());
+}
+
+std::string SHA256::Hash(uint8_t* in, uint32_t inLen)
+{
+	uint8_t* digest = new uint8_t[SHA256::DIGEST_SIZE];
 	memset(digest, 0, SHA256::DIGEST_SIZE);
-	
+
 	Init();
-	Update((unsigned char*)in.c_str(), (uint32_t)in.length());
+	Update(in, inLen);
 	Final(digest);
 
 	char buf[2 * SHA256::DIGEST_SIZE + 1];

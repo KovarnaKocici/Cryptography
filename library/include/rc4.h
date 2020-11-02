@@ -1,5 +1,5 @@
-#ifndef RC4_LIBRARY_INCLUDE_RC4_H_
-#define RC4_LIBRARY_INCLUDE_RC4_H_
+#ifndef IS_LIBRARY_INCLUDE_RC4_H_
+#define IS_LIBRARY_INCLUDE_RC4_H_
 
 #include <cstdint>
 #include <cstdio>
@@ -25,4 +25,4 @@ private:
     size_t sizeKey, prgaIndexA, prgaIndexB;
 };
 
-#endif //RC4_LIBRARY_INCLUDE_RC4_H_
+#endif //IS_LIBRARY_INCLUDE_RC4_H_

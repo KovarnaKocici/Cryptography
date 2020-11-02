@@ -27,6 +27,8 @@ add_library(sha256
         src/sha256.cpp)
 
 add_library(kupyna
+        kupyna-helpers/tables.h
+        kupyna-helpers/tables.cpp
         include/kupyna.h
         src/kupyna.cpp)
 
@@ -58,7 +60,7 @@ target_include_directories(sha256 PUBLIC
 target_include_directories(kupyna PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
-        PRIVATE src)
+        PRIVATE src kupyna-helpers)
 
 set_target_properties(aes kalyna rc4 salsa20 sha256 kupyna PROPERTIES
         CXX_STANDARD 17

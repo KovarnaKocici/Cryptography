@@ -1,5 +1,5 @@
-#ifndef AES_KALYNA_LIBRARY_INCLUDE_AES_H_
-#define AES_KALYNA_LIBRARY_INCLUDE_AES_H_
+#ifndef IS_LIBRARY_INCLUDE_AES_H_
+#define IS_LIBRARY_INCLUDE_AES_H_
 
 #include <cstdint>
 #include <cstdio>
@@ -42,4 +42,4 @@ class AES {
   size_t Nk, Nr;
 };
 
-#endif //AES_KALYNA_LIBRARY_INCLUDE_AES_H_
+#endif //IS_LIBRARY_INCLUDE_AES_H_

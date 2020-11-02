@@ -1,5 +1,5 @@
-#ifndef SALSA20_LIBRARY_INCLUDE_SALSA20_H_
-#define SALSA20_LIBRARY_INCLUDE_SALSA20_H_
+#ifndef IS_LIBRARY_INCLUDE_SALSA20_H_
+#define IS_LIBRARY_INCLUDE_SALSA20_H_
 
 #include <cstdint>
 #include <cstdio>
@@ -32,4 +32,4 @@ private:
 	uint32_t buflen;
 
 };
-#endif //SALSA20_LIBRARY_INCLUDE_SALSA20_H_
+#endif //IS_LIBRARY_INCLUDE_SALSA20_H_

@@ -1,320 +1,508 @@
 #include <iostream>
-#include <sstream>
-#include <numeric>
 #include <random>
 #include <fstream>
 #include <chrono>
-#include <cassert>
+#include <tuple>
 
-#include "aes.h"
 #include "kalyna.h"
+#include "aes.h"
 #include "rc4.h"
 #include "salsa20.h"
 
 #include "sha256.h"
 #include "kupyna.h"
 
-#define RUN_Cipher 1
-#define RUN_Hash 1
+#include "rsa.h"
+#include "helpers.h"
 
-#define RUN_AES 1
-#define RUN_KALYNA 0
-#define RUN_RC4 1
-#define RUN_SALSA20 1
+#define RUN_CRYPTOSYSTEM 1
+#define RUN_CIPHER 0
+#define RUN_HASH 0
 
-#define RUN_SHA256 1
-#define RUN_KUPYNA 1
+#if RUN_CIPHER
+    #define RUN_AES 0
+    #define RUN_KALYNA 0
+    #define RUN_RC4 0
+    #define RUN_SALSA20 0
+#endif
 
-size_t constexpr test_runs = 1u << 3u;
-size_t const microseconds_in_a_second = 1000 * 1000;
+#if RUN_HASH
+    #define RUN_SHA256 0
+    #define RUN_KUPYNA 0
+#endif
 
-const int kBytesInGigabyte = 1'000'000'000;
-const int kBytesIn100Mb = 1'000'000;
-const int kBytesInMb = 1'000;
+#if RUN_CRYPTOSYSTEM
+    #define RUN_RSA 0
+    #define RUN_RSA_CRT 0
+    #define RUN_RSA_OAEP 1
+#endif
 
-const std::string kTestFileName = "test";
+const std::string kTestFileName = "test.bin";
 const unsigned int BLOCK_BYTES_LENGTH = 16 * sizeof(uint8_t);
+size_t const microseconds_in_a_second = 1000 * 1000;
+size_t constexpr test_runs = 1u << 3u;
 
-enum ECryptoClass {
-	Cipher,
-	Hash
-};
-
-inline bool FileExists(const std::string& name) {
-	std::ifstream f(name.c_str());
-	return f.good();
+void generate_messages_internal(int length, std::vector<uint8_t> &buffer, std::vector<std::vector<uint8_t>> &result) {
+  if (buffer.size() == length) {
+    result.push_back(buffer);
+  } else {
+    for (int value = 0; value < 256; value++) {
+      buffer.push_back(value);
+      generate_messages_internal(length, buffer, result);
+      buffer.pop_back();
+    }
+  }
 }
 
-void GenerateData(const int& kDataSize, std::string& fileName) {
-	std::random_device rd;
-	std::mt19937 gen(rd());
-	std::uniform_int_distribution<> distrib(std::numeric_limits<uint8_t>::min(), std::numeric_limits<uint8_t>::max());
-
-	std::ostringstream os;
-	os << kDataSize;
-	fileName = kTestFileName + os.str() + ".bin";
-
-	std::cout << "Starting data generation" << std::endl;
-
-	if (!FileExists(fileName)) {
-		std::ofstream test_file;
-		test_file.open(fileName, std::ios::out | std::ios::binary);
-
-		if (test_file.is_open()) {
-			for (int i = 0; i < kDataSize; i++) {
-				test_file << (unsigned char)distrib(gen);
-			}
-			test_file.close();
-		}
-	}
-
-	std::cout << "Data generation finished" << std::endl;
+std::vector<std::vector<uint8_t>> generate_messages(int length) {
+  std::vector<std::vector<uint8_t>> result;
+  std::vector<uint8_t> buffer;
+  generate_messages_internal(length, buffer, result);
+  return result;
 }
 
-void MeasureCiphers(const int& kDataSize, uint8_t* input_data)
-{
+std::string ProofOfWork(SHA256 &sha256, const int length, const uint8_t kZeroBytes) {
+  std::string tail_bytes(kZeroBytes, '0');
+  const auto messages = generate_messages(length);
+  std::string result = "";
+  for (const auto &item : messages) {
+    auto *message = new uint8_t[item.size()];
+    for (size_t i = 0; i < item.size(); i++) {
+      message[i] = item[i];
+    }
+
+    std::string output = sha256.Hash(message, sizeof(message));
+    delete[] message;
+
+    if (output.size() > kZeroBytes && output.substr(output.size() - kZeroBytes) == tail_bytes) {
+      result = output;
+      break;
+    }
+  }
+  return result;
+}
+
+uint8_t *ProofOfWork(Kupyna kupyna, const int length, const uint8_t kZeroBytes) {
+  const auto messages = generate_messages(length);
+  uint8_t *result = nullptr;
+
+  auto CheckZeros = [](const uint8_t *buffer, const size_t buffer_size) -> bool {
+    for (size_t i = 0; i < buffer_size; i++) {
+      if (buffer[i]) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  for (const auto &item : messages) {
+    auto *message = new uint8_t[item.size()];
+    for (size_t i = 0; i < item.size(); i++) {
+      message[i] = item[i];
+    }
+
+    uint8_t hash_code[512 / 8];
+    kupyna.Hash(message, 512, hash_code);
+    uint8_t *output = hash_code;
+    size_t output_size = sizeof(output);
+    delete[] message;
+
+    if (output_size > kZeroBytes && CheckZeros((output + output_size - kZeroBytes), kZeroBytes)) {
+      result = output;
+      break;
+    }
+  }
+  return result;
+}
+
+void CryptoSystems(uint8_t input_data[], const int &kBytes) {
+    mpz_t p, q, phi, e, n, d, dp, dq, c, dc;
+    std::string msgSTR(input_data, input_data + kBytes);
+
+#if RUN_RSA
+    mpz_init(p);
+    mpz_init(q);
+    mpz_init(phi);
+    mpz_init(e);
+    mpz_init(n);
+    mpz_init(d);
+
+    printf("Start RSA\n");
+    auto const &before_rsa = std::chrono::high_resolution_clock::now();
+
+    RSA rsa = RSA(128, 256);
+    rsa.Init(p, q, phi, n, d, e);
+    rsa.Encrypt(&e, &n, &d, &c, msgSTR.c_str());
+    rsa.Decrypt(&dc, &c, &d, &n);
+
+    auto const &after_rsa = std::chrono::high_resolution_clock::now();
+    printf(
+            "RSA on %u bytes took %.6lfs\n",
+            kBytes,
+            static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_rsa - before_rsa).count())
+            / static_cast<double>(microseconds_in_a_second));
+    
+    mpz_clear(p);
+    mpz_clear(q);
+    mpz_clear(phi);
+    mpz_clear(e);
+    mpz_clear(n);
+    mpz_clear(d);
+#endif //RSA
+
+#if RUN_RSA_CRT
+    mpz_init(p);
+    mpz_init(q);
+    mpz_init(phi);
+    mpz_init(e);
+    mpz_init(n);
+    mpz_init(d);
+    mpz_init(dp);
+    mpz_init(dq);
+    mpz_init(c);
+    mpz_init(dc);
+
+    printf("Start RSA CRT\n");
+    auto const &before_rsa_crt = std::chrono::high_resolution_clock::now();
+
+    RSA rsa_crt = RSA(128, 256);
+    rsa_crt.InitCRT(p, q, phi, n, d, dp, dq, e);
+    rsa_crt.Encrypt(&e, &n, &d, &c, msgSTR.c_str());
+    rsa_crt.DecryptCRT(&dc, &c, &dp, &dq, &p, &q, &n);
+
+    auto const &after_rsa_crt = std::chrono::high_resolution_clock::now();
+    printf(
+            "RSA CRT on %u bytes took %.6lfs\n",
+            kBytes,
+            static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+                    after_rsa_crt - before_rsa_crt).count())
+            / static_cast<double>(microseconds_in_a_second));
+
+    mpz_clear(p);
+    mpz_clear(q);
+    mpz_clear(phi);
+    mpz_clear(e);
+    mpz_clear(n);
+    mpz_clear(d);
+    mpz_clear(dp);
+    mpz_clear(dq);
+    mpz_clear(c);
+    mpz_clear(dc);
+#endif //RSA_CRT
+
+#if RUN_RSA_OAEP
+    mpz_init(p);
+    mpz_init(q);
+    mpz_init(phi);
+    mpz_init(e);
+    mpz_init(n);
+    mpz_init(d);
+    mpz_init(dp);
+    mpz_init(dq);
+    mpz_init(c);
+    mpz_init(dc);
+
+    const int NumOfBlocks = kBytes / 16 + ((kBytes % 16 == 0) ? 0 : 1);
+    std::string *Xarr = new std::string[NumOfBlocks];
+    std::string *Yarr = new std::string[NumOfBlocks];
+    std::string *Harr = new std::string[NumOfBlocks];
+    std::string *Garr = new std::string[NumOfBlocks];
+
+    printf("Start RSA OAEP\n");
+    auto const &before_rsa_oaep = std::chrono::high_resolution_clock::now();
+
+    RSA rsa_oaep = RSA(128, 256);
+    rsa_oaep.InitCRT(p, q, phi, n, d, dp, dq, e);
+
+    // make padding block be blocks
+    for (int i = 0; i < NumOfBlocks; i++) {
+        BlockPaddingOAEP(msgSTR.substr(i * 16, i * 16 + 15), Xarr[i], Yarr[i], Harr[i], Garr[i]);
+    }
+
+    rsa_oaep.Encrypt(&e, &n, &d, &c, msgSTR.c_str());
+    rsa_oaep.DecryptCRT(&dc, &c, &dp, &dq, &p, &q, &n);
+
+    //revert padding block be block
+    std::string RES = "";
+    for (int i = 0; i < NumOfBlocks; i++) {
+        std::string temp;
+        BlockDepaddingOAEP(temp, Xarr[i], Yarr[i], Harr[i], Garr[i]);
+        RES += temp;
+    }
+
+    delete Xarr;
+    delete Yarr;
+    delete Harr;
+    delete Garr;
+
+    #if DEBUG
+        printf("\n------------------------------------------------------------------------------------------\n");
+        printf("encrypt message  = ");
+        mpz_out_str(stdout, 10, c);
+        printf("\n");
+        printf("\n------------------------------------------------------------------------------------------\n");
+        printf("message as int after decr  = ");
+        mpz_out_str(stdout, 10, dc);
+        printf("\n");
+
+        char *r = mpz_get_str(nullptr, 16, dc);
+        printf("message as string after decr  = ");
+        for (int i = 0; i < strlen(r); i++) {
+            printf("%c", r[i]);
+        }
+        printf("\n");
+    #endif // DEBUG
+
+    auto const &after_rsa_oaep = std::chrono::high_resolution_clock::now();
+    printf(
+            "RSA OAEP on %u bytes took %.6lfs\n",
+            kBytes,
+            static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+                    after_rsa_oaep - before_rsa_oaep).count())
+            / static_cast<double>(microseconds_in_a_second));
+
+    mpz_clear(p);
+    mpz_clear(q);
+    mpz_clear(phi);
+    mpz_clear(e);
+    mpz_clear(n);
+    mpz_clear(d);
+    mpz_clear(dp);
+    mpz_clear(dq);
+    mpz_clear(c);
+    mpz_clear(dc);
+#endif // RSA_OAEP
+}
+
+void HashFuncs(uint8_t *input_data, const int &kBytes) {
+#if RUN_SHA256
+  printf("Start SHA-256\n");
+  auto const &before_sha256 = std::chrono::high_resolution_clock::now();
+
+  SHA256 sha256;
+  for (size_t test = 0; test < test_runs; test++) {
+    std::string output = sha256.Hash(input_data, kBytes);
+  }
+  auto const &after_sha256 = std::chrono::high_resolution_clock::now();
+  printf(
+      "SHA-256 on %u bytes took %.6lfs\n",
+      kBytes,
+      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_sha256 - before_sha256).count())
+          / static_cast<double>(test_runs * microseconds_in_a_second));
+  SHA256 sha256pow;
+  auto const &before_sha256_pow = std::chrono::high_resolution_clock::now();
+  std::ignore = ProofOfWork(sha256pow, 2, 1);
+  auto const &after_sha256_pow = std::chrono::high_resolution_clock::now();
+  printf(
+      "POW SHA-256 took %.6lfs\n",
+      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+          after_sha256_pow - before_sha256_pow).count())
+          / static_cast<double>(test_runs * microseconds_in_a_second));
+#endif // SHA-256
+
+#if RUN_KUPYNA
+  printf("Start Kupyna\n");
+  auto const &before_kupyna = std::chrono::high_resolution_clock::now();
+
+  Kupyna kupyna(256);
+  uint8_t hash_code[512 / 8];
+  for (size_t test = 0; test < test_runs; test++) {
+    kupyna.Hash(input_data, 512, hash_code);
+  }
+  auto const &after_kupyna = std::chrono::high_resolution_clock::now();
+  printf(
+      "Kupyna on %u bytes took %.6lfs\n",
+      kBytes,
+      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_kupyna - before_kupyna).count())
+          / static_cast<double>(test_runs * microseconds_in_a_second));
+  Kupyna kupynaPow(256);
+  auto const &before_kupyna_pow = std::chrono::high_resolution_clock::now();
+  std::ignore = ProofOfWork(kupynaPow, 2, 1);
+  auto const &after_kupyna_pow = std::chrono::high_resolution_clock::now();
+  printf(
+      "POW Kupyna took %.6lfs\n",
+      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+          after_kupyna_pow - before_kupyna_pow).count())
+          / static_cast<double>(test_runs * microseconds_in_a_second));
+
+#endif // Kupyna
+}
+
+void Ciphers(uint8_t input_data[], const int &kBytes) {
 #if RUN_AES
-	AES aes(256);
-	unsigned char iv[] =
-	{ 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff };
-	unsigned char key_aes[] =
-	{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11,
-	 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f };
-	unsigned int len;
+  const int keyLen = 256;
+  AES aes(keyLen);
+  unsigned char iv[] =
+      {0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff};
+  unsigned char key[] =
+      {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11,
+       0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f};
+  unsigned int len;
 
-	printf("Start AES_CBC\n");
-	auto const& before_aes_cbc = std::chrono::high_resolution_clock::now();
+  auto const &before_aes = std::chrono::high_resolution_clock::now();
 
-	for (size_t test = 0; test < test_runs; test++) {
-		for (int i = 0; i < kDataSize; i += BLOCK_BYTES_LENGTH) {
-			unsigned char* out = aes.EncryptCBC(input_data + i, BLOCK_BYTES_LENGTH, key_aes, iv, len);
-			unsigned char* innew = aes.DecryptCBC(out, BLOCK_BYTES_LENGTH, key_aes, iv);
-			delete[] out;
-		}
-	}
+  for (size_t test = 0; test < test_runs; test++) {
+    unsigned char *out = aes.EncryptCFB(input_data ,6, kBytes, key, iv,len);
+    unsigned char *innew = aes.DecryptCFB(out,6, kBytes, key,iv);
+    assert(!memcmp(innew, input_data, kBytes));
+    delete[] out;
+  }
 
-	auto const& after_aes_cbc = std::chrono::high_resolution_clock::now();
+  auto const &after_aes = std::chrono::high_resolution_clock::now();
 
-	printf(
-		"AES_CBC(%u) on %u bytes took %.6lfs\n",
-		256,
-		kDataSize,
-		static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_aes_cbc - before_aes_cbc).count())
-		/ static_cast<double>(test_runs * microseconds_in_a_second));
+  printf(
+      "AES(%u) CFB on %u bytes took %.6lfs\n",
+      keyLen,
+      kBytes,
+      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_aes - before_aes).count())
+          / static_cast< double >(test_runs * microseconds_in_a_second));
 
-	printf("Start AES_ECB\n");
-	auto const& before_aes_ecb = std::chrono::high_resolution_clock::now();
-
-	for (size_t test = 0; test < test_runs; test++) {
-		for (int i = 0; i < kDataSize; i += BLOCK_BYTES_LENGTH) {
-			unsigned char* out = aes.EncryptECB(input_data + i, BLOCK_BYTES_LENGTH, key_aes, len);
-			unsigned char* innew = aes.DecryptECB(out, BLOCK_BYTES_LENGTH, key_aes);
-			delete[] out;
-		}
-	}
-
-	auto const& after_aes_ecb = std::chrono::high_resolution_clock::now();
-
-	printf(
-		"AES_ECB(%u) on %u bytes took %.6lfs\n",
-		256,
-		kDataSize,
-		static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_aes_ecb - before_aes_ecb).count())
-		/ static_cast<double>(test_runs * microseconds_in_a_second));
-
-	printf("Start AES_CFB\n");
-	auto const& before_aes_cfb = std::chrono::high_resolution_clock::now();
-
-	for (size_t test = 0; test < test_runs; test++) {
-		for (int i = 0; i < kDataSize; i += BLOCK_BYTES_LENGTH) {
-			unsigned char* out = aes.EncryptCFB(input_data + i, BLOCK_BYTES_LENGTH, key_aes, iv, len);
-			unsigned char* innew = aes.DecryptCFB(out, BLOCK_BYTES_LENGTH, key_aes, iv);
-			delete[] out;
-		}
-	}
-
-	auto const& after_aes_cfb = std::chrono::high_resolution_clock::now();
-
-	printf(
-		"AES_CFB(%u) on %u bytes took %.6lfs\n",
-		256,
-		kDataSize,
-		static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_aes_cfb - before_aes_cfb).count())
-		/ static_cast<double>(test_runs * microseconds_in_a_second));
-
-	printf("Start AES_OFB\n");
-	auto const& before_aes_ofb = std::chrono::high_resolution_clock::now();
-
-	for (size_t test = 0; test < test_runs; test++) {
-		for (int i = 0; i < kDataSize; i += BLOCK_BYTES_LENGTH) {
-			unsigned char* out = aes.EncryptOFB(input_data + i, BLOCK_BYTES_LENGTH, key_aes, iv, len);
-			unsigned char* innew = aes.DecryptOFB(out, BLOCK_BYTES_LENGTH, key_aes, iv);
-			delete[] out;
-		}
-	}
-
-	auto const& after_aes_ofb = std::chrono::high_resolution_clock::now();
-
-	printf(
-		"AES_OFB(%u) on %u bytes took %.6lfs\n",
-		256,
-		kDataSize,
-		static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_aes_ofb - before_aes_ofb).count())
-		/ static_cast<double>(test_runs * microseconds_in_a_second));
-
-	printf("Start AES_CTR\n");
-	auto const& before_aes_ctr = std::chrono::high_resolution_clock::now();
-
-	for (size_t test = 0; test < test_runs; test++) {
-		for (int i = 0; i < kDataSize; i += BLOCK_BYTES_LENGTH) {
-			unsigned char* out = aes.EncryptCTR(input_data + i, BLOCK_BYTES_LENGTH, key_aes, len);
-			unsigned char* innew = aes.DecryptCTR(out, BLOCK_BYTES_LENGTH, key_aes);
-			delete[] out;
-		}
-	}
-
-	auto const& after_aes_ctr = std::chrono::high_resolution_clock::now();
-
-	printf(
-		"AES_CTR(%u) on %u bytes took %.6lfs\n",
-		256,
-		kDataSize,
-		static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_aes_ctr - before_aes_ctr).count())
-		/ static_cast<double>(test_runs * microseconds_in_a_second));
 #endif //AES
 
 #if RUN_KALYNA
-	Kalyna kalyna(256, 256);
-	uint64_t key44_e[4] =
-	{ 0x0706050403020100ULL, 0x0f0e0d0c0b0a0908ULL, 0x1716151413121110ULL, 0x1f1e1d1c1b1a1918ULL };
-	kalyna.KeyExpand(key44_e);
-	uint64_t input[4], ciphered_text[4], output[4];
+  Kalyna kalyna(256, 256);
+  uint64_t key44_e[4] =
+      {0x0706050403020100ULL, 0x0f0e0d0c0b0a0908ULL, 0x1716151413121110ULL, 0x1f1e1d1c1b1a1918ULL};
+  kalyna.KeyExpand(key44_e);
+  uint64_t input[4], ciphered_text[4], output[4];
 
-	printf("Start Kalyna\n");
-	auto const& before_kalyna = std::chrono::high_resolution_clock::now();
+  auto const &before_kalyna = std::chrono::high_resolution_clock::now();
 
-	for (size_t test = 0; test < test_runs; test++) {
-		for (int i = 0; i < kDataSize; i += BLOCK_BYTES_LENGTH) {
-			memcpy(input, input_data, BLOCK_BYTES_LENGTH);
-			kalyna.Encipher(input, ciphered_text);
-			kalyna.Decipher(ciphered_text, output);
-		}
-	}
+  for (size_t test = 0; test < test_runs; test++) {
+    for (int i = 0; i < kBytes; i += BLOCK_BYTES_LENGTH) {
+      memcpy(input, input_data, BLOCK_BYTES_LENGTH);
+      kalyna.Encipher(input, ciphered_text);
+      kalyna.Decipher(ciphered_text, output);
+      assert(memcmp(input, output, sizeof(input)));
+    }
+  }
 
-	auto const& after_kalyna = std::chrono::high_resolution_clock::now();
+  auto const &after_kalyna = std::chrono::high_resolution_clock::now();
 
-	printf(
-		"Kalyna(%u, %u) on %u bytes took %.6lfs\n",
-		256, 256,
-		kDataSize,
-		static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_kalyna - before_kalyna).count())
-		/ static_cast<double>(test_runs * microseconds_in_a_second));
-#endif //KALYNA
+  printf(
+      "Kalyna(%u, %u) on %u bytes took %.6lfs\n",
+      256, 256,
+      kBytes,
+      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_kalyna - before_kalyna).count())
+          / static_cast< double >(test_runs * microseconds_in_a_second));
+
+#endif // Kalyna
 
 #if RUN_RC4
-	printf("Start RC4\n");
+  printf("Start RC4\n");
+  auto const& before_rc4 = std::chrono::high_resolution_clock::now();
 
-	RC4 rc4;
-	unsigned char key_rc4[] =
-	{ 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11,
-	 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f };
+  RC4 rc4{};
+  unsigned char key_rc4[] =
+     { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11,
+        0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f };
+  uint8_t* enc = new uint8_t[kBytes];
+  uint8_t* dec = new uint8_t[kBytes];
 
-	uint8_t* enc = new uint8_t[kDataSize];
-	uint8_t* dec = new uint8_t[kDataSize];
+  for (size_t test = 0; test < test_runs; test++) {
+    //Encipher
+    rc4.SetKey(key_rc4, sizeof key_rc4);
+    rc4.Encrypt(input_data, enc, kBytes);
 
-	auto const& before_rc4 = std::chrono::high_resolution_clock::now();
+    //Decipher
+    rc4.SetKey(key_rc4, 32);
+    rc4.Encrypt(enc, dec, kBytes);
+  }
+  auto const& after_rc4 = std::chrono::high_resolution_clock::now();
 
-	for (size_t test = 0; test < test_runs; test++) {
-		//Encipher
-		rc4.SetKey(key_rc4, sizeof key_rc4);
-		rc4.Encrypt(input_data, enc, kDataSize);
-
-		//Decipher
-		rc4.SetKey(key_rc4, sizeof key_rc4);
-		rc4.Decrypt(enc, dec, kDataSize);
-	}
-
-	auto const& after_rc4 = std::chrono::high_resolution_clock::now();
-
-	delete[] enc;
-	delete[] dec;
-
-	printf(
-		"RC4(%u) on %u bytes took %.6lfs\n",
-		32,
-		kDataSize,
-		static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_rc4 - before_rc4).count())
-		/ static_cast<double>(test_runs * microseconds_in_a_second));
-
-#endif //RC4
+  printf(
+      "RC4 on %u bytes took %.6lfs\n",
+      kBytes,
+      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_rc4 - before_rc4).count())
+          / static_cast<double>(test_runs * microseconds_in_a_second));
+  delete [] enc;
+  delete [] dec;
+#endif // RC4
 
 #if RUN_SALSA20
-	printf("Start SALSA20\n");
-	auto const& before_salsa20 = std::chrono::high_resolution_clock::now();
+  printf("Start SALSA20\n");
+  auto const& before_salsa20 = std::chrono::high_resolution_clock::now();
 
-	Salsa20 salsa20(256);
+  Salsa20 salsa20(256);
+  uint8_t key_salsa[32] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+                            21,22,23,24,25,26,27,28,29,30,31,32};
+  uint8_t n[8] = { 3, 1, 4, 1, 5, 9, 2, 6 };
 
-	uint8_t key_salsa[32] = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-	uint8_t n[8] = { 101, 102, 103, 104, 105, 106, 107, 108 };
+  for (size_t test = 0; test < test_runs; test++) {
+    salsa20.Encrypt(key_salsa, n, 0, input_data, kBytes);
+    salsa20.Decrypt(key_salsa, n, 0, input_data, kBytes);}
+    auto const &after_salsa20 = std::chrono::high_resolution_clock::now();
+  printf(
+      "Salsa20 on %u bytes took %.6lfs\n",
+      kBytes,
+      static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_salsa20 - before_salsa20).count())
+          / static_cast<double>(test_runs * microseconds_in_a_second));
 
-	for (size_t test = 0; test < test_runs; test++) {
-		salsa20.Encrypt(key_salsa, n, 0, input_data, kDataSize);
-		salsa20.Decrypt(key_salsa, n, 0, input_data, kDataSize);
-	}
-	auto const& after_salsa20 = std::chrono::high_resolution_clock::now();
-
-	printf(
-		"Salsa20(%u) on %u bytes took %.6lfs\n",
-		256,
-		kDataSize,
-		static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_salsa20 - before_salsa20).count())
-		/ static_cast<double>(test_runs * microseconds_in_a_second));
-
-#endif //SALSA20
+#endif // SALSA20
 }
 
-void MeasureHashFunctions(const int& kDataSize, uint8_t* input_data)
-{
+inline bool FileExists(const std::string &name) {
+  std::ifstream f(name.c_str());
+  return f.good();
 }
 
-void Measurement(const int& kDataSize, const std::string& fileName, ECryptoClass forClass) {
-	auto* input_data = new uint8_t[kDataSize];
-	if (FileExists(fileName)) {
-		std::ifstream input(fileName.c_str(), std::ios::in | std::ios::binary);
-		if (input.is_open()) {
-			for (int i = 0; i < kDataSize; i++) {
-				input >> input_data[i];
-			}
-		}
-	}
-	else {
-		std::cout << "Couldn't find testing file" << std::endl;
-		exit(1);
-	}
+void GenerateData(const int &kBytes) {
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<> distrib(std::numeric_limits<uint8_t>::min(), std::numeric_limits<uint8_t>::max());
 
-	switch (forClass)
-	{
-	case ECryptoClass::Cipher:
-		MeasureCiphers(kDataSize, input_data);
-		break;
-	case ECryptoClass::Hash:
-		MeasureHashFunctions(kDataSize, input_data);
-		break;
-	default:
-		break;
-	}
+  std::cout << "Starting data generation" << std::endl;
 
-	delete[] input_data;
+  if (!FileExists(kTestFileName)) {
+    std::ofstream test_file;
+    test_file.open(kTestFileName, std::ios::out | std::ios::binary);
+
+    if (test_file.is_open()) {
+      for (int i = 0; i < kBytes; i++) {
+        test_file << (unsigned char) distrib(gen);
+      }
+      test_file.close();
+    }
+  }
+
+  std::cout << "Data generation finished" << std::endl;
+}
+
+void Measurement(const int &kBytes = 1'000'000) {
+
+  auto *input_data = new uint8_t[kBytes];
+  if (FileExists(kTestFileName)) {
+    std::ifstream input(kTestFileName.c_str(), std::ios::in | std::ios::binary);
+    if (input.is_open()) {
+      for (int i = 0; i < kBytes; i++) {
+        input >> input_data[i];
+      }
+    }
+  } else {
+    std::cout << "Couldn't find testing file" << std::endl;
+    exit(1);
+  }
+
+#if RUN_CIPHER
+  Ciphers(input_data, kBytes);
+#endif // CIPHER
+
+#if RUN_HASH
+  HashFuncs(input_data, kBytes);
+#endif // HASH
+
+#if RUN_CRYPTOSYSTEM
+    CryptoSystems(input_data, kBytes);
+#endif // RUN_CRYPTOSYSTEM
+
+  delete[] input_data;
 }
 
 int main() {
-	std::string TestFile;
-	GenerateData(kBytesInMb, TestFile);
-#if RUN_Cipher
-	Measurement(kBytesInMb, TestFile, ECryptoClass::Cipher);
-#endif //RUN_Cipher
-#if RUN_Hash
-	Measurement(kBytesInMb, TestFile, ECryptoClass::Hash);
-#endif //RUN_Hash
-	return 0;
+  int kBytesInGigabyte = 1'000'000'000;
+  int kBytesInMegabyte = 1'000'000;
+  GenerateData(kBytesInMegabyte);
+  Measurement(kBytesInMegabyte);
+  //exit(0);
+  return 0;
 }

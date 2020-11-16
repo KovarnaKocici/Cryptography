@@ -2,11 +2,10 @@
 #include "transformations.h"
 
 #include <cstring>
-uint8_t* IncrementCtr(uint8_t in[], uint32_t len) {
-	for (int i = len - 1, carry = 1; i >= 0 && carry; i--) {
-		carry = !++in[i];
-	}
-	return in;
+uint8_t *IncrementCtr(uint8_t in[], uint32_t len){
+  for (int i=len-1, carry=1; i>=0 && carry; i--){
+    carry = !++in[i];}
+  return in;
 }
 
 uint8_t *PaddingNulls(uint8_t in[], uint32_t inLen, uint32_t alignLen) {
@@ -144,12 +143,11 @@ void SubBytes(uint8_t **state, size_t words_in_blocks) {
 
 // shift row i on n positions
 void ShiftRow(uint8_t **state, size_t i, size_t n, size_t words_in_block) {
-  uint8_t* tmp =  new uint8_t[words_in_block];
+  uint8_t tmp[words_in_block];
   for (size_t j = 0; j < words_in_block; j++) {
     tmp[j] = state[i][(j + n) % words_in_block];
   }
   memcpy(state[i], tmp, words_in_block * sizeof(uint8_t));
-  delete[] tmp;
 }
 
 void ShiftRows(uint8_t **state, size_t words_in_block) {

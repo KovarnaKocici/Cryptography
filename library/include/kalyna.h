@@ -1,5 +1,5 @@
-#ifndef IS_LIBRARY_INCLUDE_KALYNA_H_
-#define IS_LIBRARY_INCLUDE_KALYNA_H_
+#ifndef AES_KALYNA_LIBRARY_INCLUDE_KALYNA_H_
+#define AES_KALYNA_LIBRARY_INCLUDE_KALYNA_H_
 
 #include <cstdint>
 #include <cstdlib>
@@ -54,4 +54,4 @@ class Kalyna {
   uint64_t **round_keys;
 };
 
-#endif //IS_LIBRARY_INCLUDE_KALYNA_H_
+#endif //AES_KALYNA_LIBRARY_INCLUDE_KALYNA_H_

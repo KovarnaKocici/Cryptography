@@ -1,5 +1,5 @@
-#ifndef IS_LIBRARY_AES_HELPERS_TRANSFORMATIONS_H_
-#define IS_LIBRARY_AES_HELPERS_TRANSFORMATIONS_H_
+#ifndef AES_KALYNA_LIBRARY_AES_HELPERS_TRANSFORMATIONS_H_
+#define AES_KALYNA_LIBRARY_AES_HELPERS_TRANSFORMATIONS_H_
 
 #include <cstdint>
 #include <cstdio>
@@ -13,7 +13,7 @@ uint32_t GetPaddingLength(uint32_t len, size_t block_bytes_len);
 
 uint8_t *PaddingNulls(uint8_t in[], uint32_t inLen, uint32_t alignLen);
 
-uint8_t* IncrementCtr(uint8_t in[], uint32_t len);
+uint8_t *IncrementCtr(uint8_t in[], uint32_t len);
 
 void MixColumns(uint8_t **state);
 
@@ -44,4 +44,4 @@ void InvMixColumns(uint8_t **state, size_t words_in_block);
 
 void InvShiftRows(uint8_t **state, size_t words_in_block);
 
-#endif //IS_LIBRARY_AES_HELPERS_TRANSFORMATIONS_H_
+#endif //AES_KALYNA_LIBRARY_AES_HELPERS_TRANSFORMATIONS_H_

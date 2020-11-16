@@ -4,7 +4,24 @@ add_library(aes
         aes-helpers/transformations.h
         aes-helpers/transformations.cpp
         include/aes.h
-        src/aes.cpp)
+        src/aes.cpp
+        src/rc4.cpp
+        include/rc4.h
+        include/salsa20.h
+        src/salsa20.cpp
+        include/sha256.h
+        src/sha256.cpp
+        src/kupyna.cpp
+        include/kupyna.h
+        kupyna-helpers/tables.cpp
+        kupyna-helpers/tables.h)
+
+add_library(rsa
+        include/rsa.h
+        src/rsa.cpp
+        rsa-helpers/helpers.h
+        rsa-helpers/helpers.cpp
+        )
 
 add_library(kalyna
         kalyna-helpers/tables.h
@@ -13,24 +30,6 @@ add_library(kalyna
         kalyna-helpers/transformations.cpp
         include/kalyna.h
         src/kalyna.cpp)
-
-add_library(rc4
-        include/rc4.h
-        src/rc4.cpp)
-
-add_library(salsa20
-        include/salsa20.h
-        src/salsa20.cpp)
-
-add_library(sha256
-        include/sha256.h
-        src/sha256.cpp)
-
-add_library(kupyna
-        kupyna-helpers/tables.h
-        kupyna-helpers/tables.cpp
-        include/kupyna.h
-        src/kupyna.cpp)
 
 target_include_directories(aes PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -42,27 +41,15 @@ target_include_directories(kalyna PUBLIC
         $<INSTALL_INTERFACE:include>
         PRIVATE src kalyna-helpers)
 
-target_include_directories(rc4 PUBLIC
+target_include_directories(rsa PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
+        rsa-helpers
         PRIVATE src)
 
-target_include_directories(salsa20 PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-        PRIVATE src)
+target_link_libraries(rsa gmp libgmp)
 
-target_include_directories(sha256 PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-        PRIVATE src)
-
-target_include_directories(kupyna PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
-        PRIVATE src kupyna-helpers)
-
-set_target_properties(aes kalyna rc4 salsa20 sha256 kupyna PROPERTIES
+set_target_properties(aes kalyna rsa PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED YES
         CXX_EXTENSIONS OFF)

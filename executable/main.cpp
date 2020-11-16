@@ -14,6 +14,8 @@
 #include "sha256.h"
 #include "kupyna.h"
 
+#include "rsa.h"
+
 #define RUN_Cipher 1
 #define RUN_Hash 1
 
@@ -24,6 +26,8 @@
 
 #define RUN_SHA256 1
 #define RUN_KUPYNA 1
+
+#define RUN_RSA 1
 
 size_t constexpr test_runs = 1u << 3u;
 size_t const microseconds_in_a_second = 1000 * 1000;
@@ -275,6 +279,57 @@ void MeasureCiphers(const int& kDataSize, uint8_t* input_data)
 
 void MeasureHashFunctions(const int& kDataSize, uint8_t* input_data)
 {
+#if RUN_SHA256
+	printf("Start SHA-256\n");
+	auto const& before_sha256 = std::chrono::high_resolution_clock::now();
+
+	SHA256 sha256;
+	for (size_t test = 0; test < test_runs; test++) {
+		std::string output = sha256.Hash(input_data, kBytes);
+	}
+	auto const& after_sha256 = std::chrono::high_resolution_clock::now();
+	printf(
+		"SHA-256 on %u bytes took %.6lfs\n",
+		kDataSize,
+		static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_sha256 - before_sha256).count())
+		/ static_cast<double>(test_runs * microseconds_in_a_second));
+	SHA256 sha256pow;
+	auto const& before_sha256_pow = std::chrono::high_resolution_clock::now();
+	std::ignore = ProofOfWork(sha256pow, 2, 1);
+	auto const& after_sha256_pow = std::chrono::high_resolution_clock::now();
+	printf(
+		"POW SHA-256 took %.6lfs\n",
+		static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+			after_sha256_pow - before_sha256_pow).count())
+		/ static_cast<double>(test_runs * microseconds_in_a_second));
+#endif // SHA-256
+
+#if RUN_KUPYNA
+	printf("Start Kupyna\n");
+	auto const& before_kupyna = std::chrono::high_resolution_clock::now();
+
+	Kupyna kupyna(256);
+	uint8_t hash_code[512 / 8];
+	for (size_t test = 0; test < test_runs; test++) {
+		kupyna.Hash(input_data, 512, hash_code);
+	}
+	auto const& after_kupyna = std::chrono::high_resolution_clock::now();
+	printf(
+		"Kupyna on %u bytes took %.6lfs\n",
+		kDataSize,
+		static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_kupyna - before_kupyna).count())
+		/ static_cast<double>(test_runs * microseconds_in_a_second));
+	Kupyna kupynaPow(256);
+	auto const& before_kupyna_pow = std::chrono::high_resolution_clock::now();
+	std::ignore = ProofOfWork(kupynaPow, 2, 1);
+	auto const& after_kupyna_pow = std::chrono::high_resolution_clock::now();
+	printf(
+		"POW Kupyna took %.6lfs\n",
+		static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
+			after_kupyna_pow - before_kupyna_pow).count())
+		/ static_cast<double>(test_runs * microseconds_in_a_second));
+
+#endif // Kupyna
 }
 
 void Measurement(const int& kDataSize, const std::string& fileName, ECryptoClass forClass) {

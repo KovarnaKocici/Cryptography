@@ -32,6 +32,14 @@ add_library(kupyna
         include/kupyna.h
         src/kupyna.cpp)
 
+add_library(rsa
+        rsa-helpers/rsa-helpers.h
+        rsa-helpers/rsa-helpers.cpp
+        rsa-helpers/OAE.h
+        rsa-helpers/OAE.cpp
+        include/rsa.h
+        src/rsa.cpp)
+
 target_include_directories(aes PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
@@ -62,7 +70,12 @@ target_include_directories(kupyna PUBLIC
         $<INSTALL_INTERFACE:include>
         PRIVATE src kupyna-helpers)
 
-set_target_properties(aes kalyna rc4 salsa20 sha256 kupyna PROPERTIES
+target_include_directories(rsa PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+        PRIVATE src rsa-helpers)
+
+set_target_properties(aes kalyna rc4 salsa20 sha256 kupyna rsa PROPERTIES
         CXX_STANDARD 17
         CXX_STANDARD_REQUIRED YES
         CXX_EXTENSIONS OFF)

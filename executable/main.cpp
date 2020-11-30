@@ -14,6 +14,8 @@
 
 #include "rsa.h"
 #include "helpers.h"
+#include "../library/ecc-helpers/el-curve.h"
+#include "../library/ecc-helpers/gf2.h"
 
 #define RUN_CRYPTOSYSTEM 1
 #define RUN_CIPHER 0
@@ -32,9 +34,10 @@
 #endif
 
 #if RUN_CRYPTOSYSTEM
-    #define RUN_RSA 0
-    #define RUN_RSA_CRT 0
+    #define RUN_RSA 1
+    #define RUN_RSA_CRT 1
     #define RUN_RSA_OAEP 1
+    #define RUN_ECC 1
 #endif
 
 const std::string kTestFileName = "test.bin";
@@ -115,17 +118,46 @@ uint8_t *ProofOfWork(Kupyna kupyna, const int length, const uint8_t kZeroBytes) 
   return result;
 }
 
-void CryptoSystems(uint8_t input_data[], const int &kBytes) {
-    mpz_t p, q, phi, e, n, d, dp, dq, c, dc;
-    std::string msgSTR(input_data, input_data + kBytes);
+void RunECC(uint8_t input_data[], const int &kBytes)
+{
+    printf("\nStart ECC");
+    auto const &before_ecc = std::chrono::high_resolution_clock::now();
+    mpz_class A(1);
+    mpz_class B;
+    B.set_str("7BC86E2102902EC4D5890E8B6B4981ff27E0482750FEFC03", 16);
+    mpz_class m(191);
+    mpz_class n;
+    n.set_str("400000000000000000002BEC12BE2262D39BCF14D", 16);
+    std::vector<mpz_class> powers = {191, 9, 0};
+    ElipticCurve* curve191 = new ElipticCurve(A, B, 191, GF::ConvertToFx(powers));
+    std::cout << "\nInitializing ECC 163";
+    ECC ecc191 = ECC(A, B, m, n, curve191);
+    std::cout<< "\nRunning ECC 163";
+    std::tuple<unsigned char*, size_t, std::string> signature = ecc191.Sign(input_data, kBytes);
+    bool verified = ecc191.ValidateSignature(signature);
+    std::cout<<"verified:" << verified;
 
-#if RUN_RSA
+    auto const &after_ecc = std::chrono::high_resolution_clock::now();
+    printf(
+            "ECC on %u bytes took %.6lfs\n",
+            kBytes,
+            static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_ecc - before_ecc).count())
+            / static_cast<double>(test_runs * microseconds_in_a_second));
+    delete curve191;
+}
+
+void RunRSA(uint8_t input_data[], const int &kBytes){
+    mpz_t p, q, phi, e, n, d, c, dc;
+    std::string msgSTR = (char*)input_data;
+
     mpz_init(p);
     mpz_init(q);
     mpz_init(phi);
     mpz_init(e);
     mpz_init(n);
     mpz_init(d);
+    mpz_init(c);
+    mpz_init(dc);
 
     printf("Start RSA\n");
     auto const &before_rsa = std::chrono::high_resolution_clock::now();
@@ -141,16 +173,21 @@ void CryptoSystems(uint8_t input_data[], const int &kBytes) {
             kBytes,
             static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_rsa - before_rsa).count())
             / static_cast<double>(microseconds_in_a_second));
-    
+
     mpz_clear(p);
     mpz_clear(q);
     mpz_clear(phi);
     mpz_clear(e);
     mpz_clear(n);
     mpz_clear(d);
-#endif //RSA
+    mpz_clear(c);
+    mpz_clear(dc);
+}
 
-#if RUN_RSA_CRT
+void RunRSA_CRT(uint8_t input_data[], const int &kBytes){
+    mpz_t p, q, phi, e, n, d, dp, dq, c, dc;
+    std::string msgSTR = (char*)input_data;
+
     mpz_init(p);
     mpz_init(q);
     mpz_init(phi);
@@ -188,9 +225,10 @@ void CryptoSystems(uint8_t input_data[], const int &kBytes) {
     mpz_clear(dq);
     mpz_clear(c);
     mpz_clear(dc);
-#endif //RSA_CRT
+}
 
-#if RUN_RSA_OAEP
+void RunRSA_OAEP(uint8_t input_data[], const int &kBytes){
+    mpz_t p, q, phi, e, n, d, dp, dq, c, dc;
     mpz_init(p);
     mpz_init(q);
     mpz_init(phi);
@@ -202,76 +240,90 @@ void CryptoSystems(uint8_t input_data[], const int &kBytes) {
     mpz_init(c);
     mpz_init(dc);
 
-    const int NumOfBlocks = kBytes / 16 + ((kBytes % 16 == 0) ? 0 : 1);
-    std::string *Xarr = new std::string[NumOfBlocks];
-    std::string *Yarr = new std::string[NumOfBlocks];
-    std::string *Harr = new std::string[NumOfBlocks];
-    std::string *Garr = new std::string[NumOfBlocks];
+    std::string msg = (char*)input_data;
+    int len = msg.length();
 
-    printf("Start RSA OAEP\n");
-    auto const &before_rsa_oaep = std::chrono::high_resolution_clock::now();
+    printf("Start RSA_OAEP\n");
+    auto const& before_rsa = std::chrono::high_resolution_clock::now();
+    RSA rsa = RSA(128, 128);
 
-    RSA rsa_oaep = RSA(128, 256);
-    rsa_oaep.InitCRT(p, q, phi, n, d, dp, dq, e);
+    rsa.InitCRT(p, q, phi, n, d, dp, dq, e);
 
-    // make padding block be blocks
+    //----------OAEP------------------------------------------
+    // make padding block be block
+    int NumOfBlocks = len / 16 + ((len % 16 == 0) ? 0 : 1);
+    std::string msgSTR(msg);
+    msgSTR.resize(NumOfBlocks * 16, (char) 0);
+    // make class
+    std::string Xarr[NumOfBlocks];
+    std::string Yarr[NumOfBlocks];
+    std::string Harr[NumOfBlocks];
+    std::string Garr[NumOfBlocks];
     for (int i = 0; i < NumOfBlocks; i++) {
-        BlockPaddingOAEP(msgSTR.substr(i * 16, i * 16 + 15), Xarr[i], Yarr[i], Harr[i], Garr[i]);
+      BlockPaddingOAEP(msgSTR.substr(i * 16, i * 16 + 15), Xarr[i], Yarr[i], Harr[i], Garr[i]);
     }
-
-    rsa_oaep.Encrypt(&e, &n, &d, &c, msgSTR.c_str());
-    rsa_oaep.DecryptCRT(&dc, &c, &dp, &dq, &p, &q, &n);
-
+//______________________________________________________________________
+    rsa.Encrypt(&e, &n, &d, &c, msgSTR.c_str());
+    rsa.DecryptCRT(&dc, &c, &dp, &dq, &p, &q, &n);
+//_________________OAEPP_________________________________________________
     //revert padding block be block
     std::string RES = "";
     for (int i = 0; i < NumOfBlocks; i++) {
-        std::string temp;
-        BlockDepaddingOAEP(temp, Xarr[i], Yarr[i], Harr[i], Garr[i]);
-        RES += temp;
+      std::string temp;
+      BlockDepaddingOAEP(temp, Xarr[i], Yarr[i], Harr[i], Garr[i]);
+      RES += temp;
     }
+#if DEBUG
+    printf("\n------------------------------------------------------------------------------------------\n");
+    printf("encrypt message  = ");
+    mpz_out_str(stdout, 10, c);
+    printf("\n");
+    printf("\n------------------------------------------------------------------------------------------\n");
+    printf("message as int after decr  = ");
+    mpz_out_str(stdout, 10, dc);
+    printf("\n");
+     char *r = mpz_get_str(nullptr, 16, dc);
+    printf("message as string after decr  = ");
+    for (int i = 0; i < strlen(r); i++) {
+        printf("%c", r[i]);
+    }
+    printf("\n");
+#endif // DEBUG
+    auto const &after_rsa = std::chrono::high_resolution_clock::now();
 
-    delete Xarr;
-    delete Yarr;
-    delete Harr;
-    delete Garr;
-
-    #if DEBUG
-        printf("\n------------------------------------------------------------------------------------------\n");
-        printf("encrypt message  = ");
-        mpz_out_str(stdout, 10, c);
-        printf("\n");
-        printf("\n------------------------------------------------------------------------------------------\n");
-        printf("message as int after decr  = ");
-        mpz_out_str(stdout, 10, dc);
-        printf("\n");
-
-        char *r = mpz_get_str(nullptr, 16, dc);
-        printf("message as string after decr  = ");
-        for (int i = 0; i < strlen(r); i++) {
-            printf("%c", r[i]);
-        }
-        printf("\n");
-    #endif // DEBUG
-
-    auto const &after_rsa_oaep = std::chrono::high_resolution_clock::now();
     printf(
-            "RSA OAEP on %u bytes took %.6lfs\n",
-            kBytes,
-            static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(
-                    after_rsa_oaep - before_rsa_oaep).count())
+            "RSA_OAEP took %.6lfs\n",
+            static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_rsa - before_rsa).count() )
             / static_cast<double>(microseconds_in_a_second));
 
     mpz_clear(p);
-    mpz_clear(q);
-    mpz_clear(phi);
-    mpz_clear(e);
-    mpz_clear(n);
-    mpz_clear(d);
     mpz_clear(dp);
+    mpz_clear(q);
     mpz_clear(dq);
+    mpz_clear(phi);
+    mpz_clear(n);
+    mpz_clear(e);
     mpz_clear(c);
+    mpz_clear(d);
     mpz_clear(dc);
+}
+void CryptoSystems(uint8_t input_data[], const int &kBytes) {
+
+#if RUN_RSA
+   RunRSA(input_data, kBytes);
+#endif //RSA
+
+#if RUN_RSA_CRT
+    RunRSA_CRT(input_data, kBytes);
+#endif //RSA_CRT
+
+#if RUN_RSA_OAEP
+    RunRSA_OAEP(input_data, kBytes);
 #endif // RSA_OAEP
+
+#if RUN_ECC
+    RunECC(input_data, kBytes);
+#endif //RUN_ECC
 }
 
 void HashFuncs(uint8_t *input_data, const int &kBytes) {

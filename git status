@@ -1,0 +1,66 @@
+[33mcommit 5457711888911ac40dec52d0321538442646385e[m[33m ([m[1;36mHEAD -> [m[1;32mmaster[m[33m)[m
+Author: eugenia.beirak <b.eugenia26@gmail.com>
+Date:   Mon Nov 16 04:50:00 2020 +0300
+
+    Code refactoring.
+
+[33mcommit 9cff50b9c5d96b9ce69b0b801d1fca224c3ca25e[m
+Merge: 16e2c81 62c3cf5
+Author: eugenia.beirak <b.eugenia26@gmail.com>
+Date:   Mon Nov 2 02:31:00 2020 +0200
+
+    Fixes
+
+[33mcommit 62c3cf5a4ba059cabb5e84de81ecc694d37feb10[m
+Author: eugenia.beirak <b.eugenia26@gmail.com>
+Date:   Mon Nov 2 02:01:42 2020 +0200
+
+    Kupyna implementation was finalized
+
+[33mcommit 16e2c8168fa48eb97bc9e04ffe34d4795aab3e7c[m
+Author: eugenia.beirak <b.eugenia26@gmail.com>
+Date:   Mon Nov 2 01:53:00 2020 +0300
+
+    Code refactoring.
+
+[33mcommit 5095660516fbeb1131caf1b1e7fdb22a3a9504fe[m
+Author: eugenia.beirak <b.eugenia26@gmail.com>
+Date:   Sun Nov 1 22:52:59 2020 +0200
+
+    SHA256 implementation was finalized
+
+[33mcommit 3a2f2c2a628ea4bf63cc93953053c873b6a32c89[m
+Author: eugenia.beirak <b.eugenia26@gmail.com>
+Date:   Sun Nov 1 18:57:15 2020 +0200
+
+    Initial implementation of SHA256 and Kupyna
+
+[33mcommit e60acd8e56b5e0491781408d50a541195d667de9[m
+Author: eugenia.beirak <b.eugenia26@gmail.com>
+Date:   Mon Oct 19 04:00:05 2020 +0200
+
+    Salsa20, RC4 and AES modes finalized.
+
+[33mcommit a051e110bab097d3f6a45224c9172a84d5439687[m
+Author: eugenia.beirak <b.eugenia26@gmail.com>
+Date:   Mon Oct 19 02:22:06 2020 +0300
+
+    Code improvements.
+
+[33mcommit 92fc74525cc64112fd7760fee6c672fc6b407d28[m
+Author: eugenia.beirak <b.eugenia26@gmail.com>
+Date:   Mon Oct 19 01:33:47 2020 +0300
+
+    Code refactoring. Added Salsa20 implementation
+
+[33mcommit 40b2bc3065a617a90a38f25be6f410845abe3f04[m
+Author: eugenia.beirak <b.eugenia26@gmail.com>
+Date:   Sun Oct 18 20:03:08 2020 +0300
+
+    RC4 implementation. Continued work on encryption modes in AES
+
+[33mcommit 363d09529f3a7b55469a85f121c7d6c0a276454d[m
+Author: Yevheniia Beirak <b.eugenia26@gmail.com>
+Date:   Tue Oct 6 23:11:00 2020 +0300
+
+    Code translation to cpp

@@ -100,11 +100,13 @@ int InitSeed(const size_t bytes) {
     FILE *f = fopen("/dev/urandom", "rb");
     if (!f) {
       // Fall-through to use current time as seed
-    } else {
+    }
+    else{
       mpz_class seed = 0;
-      for (size_t i = 0; i < bytes; ++i) {
-        int n = fgetc(f);
-        seed = (seed << 8) | n;
+      for (size_t i = 0; i < bytes; ++i)
+      {
+          int n = fgetc(f);
+          seed = (seed << 8) | n;
       }
 
       fclose(f);
@@ -149,8 +151,8 @@ void BlockPaddingOAEP(const std::string &msg, std::string &X, std::string &Y, st
   for (int i = 0; i < r.length(); i++) {
     Y += (char) (r[i] ^ H[i % H.length()]);
   }
-#if !DEBUG
-  //std::cout << Y;
+#if DEBUG
+  std::cout << Y;
   std::cout << "\n-------padding is over ! time to RSA-------\n";
 #endif // DEBUG
 }

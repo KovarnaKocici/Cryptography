@@ -14,7 +14,15 @@ add_library(aes
         src/kupyna.cpp
         include/kupyna.h
         kupyna-helpers/tables.cpp
-        kupyna-helpers/tables.h)
+        kupyna-helpers/tables.h
+        src/ecc.cpp
+        include/ecc.h
+        ecc-helpers/gf2.h
+        ecc-helpers/gf2.cpp
+        ecc-helpers/el-curve.h
+        ecc-helpers/el-curve.cpp
+        ecc-helpers/transforms.h
+        ecc-helpers/transforms.cpp)
 
 add_library(rsa
         include/rsa.h
@@ -47,7 +55,7 @@ target_include_directories(rsa PUBLIC
         rsa-helpers
         PRIVATE src)
 
-target_link_libraries(rsa gmp libgmp)
+target_link_libraries(rsa gmpxx libgmp )
 
 set_target_properties(aes kalyna rsa PROPERTIES
         CXX_STANDARD 17

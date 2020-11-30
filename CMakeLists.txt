@@ -12,3 +12,4 @@ add_subdirectory(executable)
 
 enable_testing()
 add_subdirectory(tests)
+

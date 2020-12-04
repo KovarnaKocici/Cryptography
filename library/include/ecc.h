@@ -2,19 +2,21 @@
 #define AES_KALYNA_INCLUDE_ECC_H_
 
 #include <gmpxx.h>
+#include <vector>
 
 class ElipticCurve;
 class Point;
 
 class ECC{
 private:
-    mpz_class _A, _B,_m, _f, _n, _Ln, _d, _e, _Fe, _LD;
+    mpz_class _A, _B, _f, _n, _d, _e, _Fe;
+    unsigned int _m, _Ln, _LD;
     ElipticCurve* _curve;
     Point* _P;
     Point* _Q;
 
 public:
-    ECC(mpz_class A, mpz_class B, mpz_class m, mpz_class n, ElipticCurve* curve);
+    ECC(mpz_class A, mpz_class B, unsigned int m, mpz_class n, std::vector<mpz_class> powers);
     std::tuple<unsigned char*, size_t, std::string> Sign(unsigned char* bytes, size_t size);
     bool ValidateSignature(std::tuple<unsigned char*, size_t, std::string> signature);
     mpz_class TransformToFieldEl(std::string bytes);

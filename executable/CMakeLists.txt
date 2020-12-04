@@ -1,5 +1,4 @@
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-find_package(GMP REQUIRED)
 
 add_executable(example main.cpp)
 

@@ -14,8 +14,7 @@
 
 #include "rsa.h"
 #include "helpers.h"
-#include "../library/ecc-helpers/el-curve.h"
-#include "../library/ecc-helpers/gf2.h"
+#include "ecc.h"
 
 #define RUN_CRYPTOSYSTEM 1
 #define RUN_CIPHER 0
@@ -34,9 +33,9 @@
 #endif
 
 #if RUN_CRYPTOSYSTEM
-    #define RUN_RSA 1
-    #define RUN_RSA_CRT 1
-    #define RUN_RSA_OAEP 1
+    #define RUN_RSA 0
+    #define RUN_RSA_CRT 0
+    #define RUN_RSA_OAEP 0
     #define RUN_ECC 1
 #endif
 
@@ -120,30 +119,34 @@ uint8_t *ProofOfWork(Kupyna kupyna, const int length, const uint8_t kZeroBytes) 
 
 void RunECC(uint8_t input_data[], const int &kBytes)
 {
-    printf("\nStart ECC");
-    auto const &before_ecc = std::chrono::high_resolution_clock::now();
-    mpz_class A(1);
-    mpz_class B;
-    B.set_str("7BC86E2102902EC4D5890E8B6B4981ff27E0482750FEFC03", 16);
-    mpz_class m(191);
-    mpz_class n;
-    n.set_str("400000000000000000002BEC12BE2262D39BCF14D", 16);
-    std::vector<mpz_class> powers = {191, 9, 0};
-    ElipticCurve* curve191 = new ElipticCurve(A, B, 191, GF::ConvertToFx(powers));
-    std::cout << "\nInitializing ECC 163";
-    ECC ecc191 = ECC(A, B, m, n, curve191);
-    std::cout<< "\nRunning ECC 163";
-    std::tuple<unsigned char*, size_t, std::string> signature = ecc191.Sign(input_data, kBytes);
-    bool verified = ecc191.ValidateSignature(signature);
-    std::cout<<"verified:" << verified;
+    try {
+        printf("\nStart ECC");
+        auto const &before_ecc = std::chrono::high_resolution_clock::now();
+        mpz_class A(1);
+        mpz_class B;
+        B.set_str("7BC86E2102902EC4D5890E8B6B4981ff27E0482750FEFC03", 16);
+        unsigned int  m = 191;
+        mpz_class n;
+        n.set_str("40000000000000000000000069A779CAC1DABC6788F7474F", 16);
+        std::vector<mpz_class> powers = {191, 9, 0};
+        std::cout << "\nInitializing ECC 191";
+        ECC ecc191 = ECC(A, B, m, n, powers);
+        std::cout<< "\nRunning ECC 191";
+        std::tuple<unsigned char*, size_t, std::string> signature = ecc191.Sign(input_data, kBytes);
+        bool verified = ecc191.ValidateSignature(signature);
+        std::cout<<"verified:" << verified;
 
-    auto const &after_ecc = std::chrono::high_resolution_clock::now();
-    printf(
-            "ECC on %u bytes took %.6lfs\n",
-            kBytes,
-            static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_ecc - before_ecc).count())
-            / static_cast<double>(test_runs * microseconds_in_a_second));
-    delete curve191;
+        auto const &after_ecc = std::chrono::high_resolution_clock::now();
+        printf(
+                "ECC on %u bytes took %.6lfs\n",
+                kBytes,
+                static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>(after_ecc - before_ecc).count())
+                / static_cast<double>(test_runs * microseconds_in_a_second));
+    }
+    catch( const std::exception &ex)
+    {
+        std::cout<<"\n"<< ex.what();
+    }
 }
 
 void RunRSA(uint8_t input_data[], const int &kBytes){

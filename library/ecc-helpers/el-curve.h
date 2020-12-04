@@ -30,16 +30,17 @@ public:
 
 class ElipticCurve {
 private:
-    mpz_class _A, _B, _f, _m, _mask;
+    mpz_class _A, _B, _f, _mask;
+    unsigned int _m;
     Point _zero;
 
 public:
     Point getZero(){return _zero;}
     mpz_class getF() const {return _f;}
-    mpz_class getM() const {return _m;}
+    unsigned int getM() const {return _m;}
     mpz_class getMask() const {return _mask;}
 
-    ElipticCurve(mpz_class A, mpz_class B, mpz_class m, mpz_class f);
+    ElipticCurve(mpz_class A, mpz_class B, unsigned int m, std::vector<mpz_class> powers);
 
     Point AddPoints(Point p1, Point q1);
 
